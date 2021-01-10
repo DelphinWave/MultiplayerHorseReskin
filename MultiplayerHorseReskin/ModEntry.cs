@@ -15,6 +15,8 @@ namespace MultiplayerHorseReskin
 {
     public class ModEntry : Mod
     {
+        internal static IMonitor SMonitor;
+
         /*********
         ** Public methods
         *********/
@@ -23,9 +25,20 @@ namespace MultiplayerHorseReskin
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
-            helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+            SMonitor = Monitor;
+
+            // Events
+            IModEvents events = helper.Events;
+            events.GameLoop.SaveLoaded += this.OnSaveLoaded;
+            events.Input.ButtonPressed += this.OnButtonPressed;
+            events.Multiplayer.ModMessageReceived += this.OnModMessageReceived;
             // helper.Events.GameLoop.DayStarted += this.OnDayStarted;
+
+            // SMAPI Commands
+            helper.ConsoleCommands.Add("list_horses", "Lists the names of all horses on your farm.", Framework.CommandHandler.OnCommandReceived);
+            // helper.ConsoleCommands.Add("list_farmers", "Lists the names and Multiplayer ID of all farmers", Framework.CommandHandler.OnCommandReceived);
+            helper.ConsoleCommands.Add("reskin_horse", "Specify horse id and skin id you want to assign to it", Framework.CommandHandler.OnCommandReceived);
+
         }
 
         /*********
@@ -33,10 +46,11 @@ namespace MultiplayerHorseReskin
         *********/
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
-            // Set sprite for all horses that are not the player's horse
-            foreach (Horse horse in GetHorses())
-                if(horse.ownerId != Game1.player.uniqueMultiplayerID)
-                    horse.Sprite = new AnimatedSprite("Animals\\MultiplayerHorseReskin\\horse", 7, 32, 32);
+            // TODO: LoadHorseSprites
+            foreach(var d in GetHorsesDict())
+            {
+                LoadHorseSprites(d.Value);
+            }
 
         }
 
@@ -63,25 +77,50 @@ namespace MultiplayerHorseReskin
                     {
                         // TODO: suppress action if mounting or dismounting horse
                         // TODO: present texture options for horses
-                        Monitor.Log("---------- Clicked -------------", LogLevel.Debug);
+                        SMonitor.Log("---------- Clicked -------------", LogLevel.Debug);
                         break;
                     }
                 }
             }
         }
 
+        /// <summary>Raised after a mod message is received over the network.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private void OnModMessageReceived(object sender, ModMessageReceivedEventArgs e)
+        {
+            // TODO: handle mod message received for horse reskin by farmhands
+        }
+
+        /*********
+        ** Public methods
+        *********/
+
         /// <summary>
         /// Gets all horses in game
         /// </summary>
-        /// <returns>List of horses</returns>
-        public List<Horse> GetHorses()
+        /// <returns>Dictionary of horses</returns>
+        public static Dictionary<Guid, Horse> GetHorsesDict()
         {
-            List<Horse> horses = new List<Horse>();
+            Dictionary<Guid, Horse> horses = new Dictionary<Guid, Horse>();
             foreach (NPC npc in Utility.getAllCharacters())
                 if (npc is Horse && IsNotATractor(npc as Horse))
-                    horses.Add(npc as Horse);
+                {
+                    Horse horse = npc as Horse;
+                    horses.Add(horse.HorseId, npc as Horse);
+                }
+                    
+
             return horses;
         }
+
+        /// <summary>
+        /// Gets Horse by id
+        /// </summary>
+        /// <param name="horseId">id of horse you wish to get</param>
+        /// <returns>Horse object</returns>
+        public static Horse GetHorseById(Guid horseId) { return GetHorsesDict()[horseId]; }
+
 
         /// <summary>
         /// Gets all stables that are fully constructed and contain a horse (i.e. not a tractor)
@@ -109,5 +148,21 @@ namespace MultiplayerHorseReskin
         /// <param name="horse">Horse object</param>
         /// <returns>true if not a tractor</returns>
         public static bool IsNotATractor(Horse horse) { return !horse.Name.StartsWith("tractor/"); }
+
+        public static void LoadHorseSprites(Horse horse)
+        {
+            // TODO: better handling of horse.Manners
+            if (horse.Manners != 0)
+                horse.Sprite = new AnimatedSprite($"Animals\\MultiplayerHorseReskin\\horse_{horse.Manners}", 7, 32, 32);
+        }
+
+        public static void SaveHorseReskin(Guid horseId, int skinId)
+        {
+            // TODO: only on main player => Context.IsMainPlayer
+            // TODO: some validation?
+            var horse = GetHorseById(horseId);
+            if (horse != null)
+                horse.Manners = skinId;
+        }
     }
 }
