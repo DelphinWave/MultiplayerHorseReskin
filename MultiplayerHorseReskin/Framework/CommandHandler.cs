@@ -61,7 +61,6 @@ namespace MultiplayerHorseReskin.Framework
                     var horseIdFromName = ModEntry.GetHorseIdFromName(horseName);
                     if (horseIdFromName != null)
                     {
-                        // TODO: better handling
                         if (Context.IsMainPlayer)
                         {
                             ModEntry.SaveHorseReskin((Guid)horseIdFromName, int.Parse(skinId));
@@ -74,7 +73,6 @@ namespace MultiplayerHorseReskin.Framework
                                 modIDs: new[] { ModEntry.SModManifest.UniqueID }
                             );
                         }
-                        // ModEntry.LoadHorseSprites(ModEntry.GetHorseById((Guid)horseIdFromName));
                     }
                     return;
                 case "reskin_horse_id":
@@ -88,7 +86,6 @@ namespace MultiplayerHorseReskin.Framework
                     // TODO: actually send a multiplayer mod message
                     // TODO: better handling
                     ModEntry.SaveHorseReskin(Guid.Parse(horseId), int.Parse(skinId));
-                    ModEntry.LoadHorseSprites(ModEntry.GetHorseById(Guid.Parse(horseId)));
                     return;
                 default:
                     ModEntry.SMonitor.Log($"Unknown command '{command}'.", LogLevel.Error);

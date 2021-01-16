@@ -10,18 +10,16 @@ using StardewValley.Characters;
 using StardewValley.Buildings;
 using StardewValley.Locations;
 using StardewValley.Menus;
+using Microsoft.Xna.Framework.Graphics;
+using MultiplayerHorseReskin.Framework;
+using MultiplayerHorseReskin.Common;
 
 namespace MultiplayerHorseReskin
 {
     public class ModEntry : Mod
     {
-        // Static IMonitor
         internal static IMonitor SMonitor;
-
-        // Static Helper
         internal static IModHelper SHelper;
-
-        // Static ModManifest
         internal static IManifest SModManifest;
 
         // Whether the mod is enabled for the current farmhand.
@@ -35,6 +33,12 @@ namespace MultiplayerHorseReskin
 
         // Inform farmhands to update horse sprites
         internal static readonly string ReloadHorseSpritesMessageId = "HorseSpriteReload";
+
+        /// <summary>The mod settings.</summary>
+        private static MultiplayerHorseReskinModConfig config;
+
+        /// <summary>The configured key bindings.</summary>
+        // private ModConfigKeys Keys;
 
 
         /*********
@@ -51,21 +55,32 @@ namespace MultiplayerHorseReskin
 
             // Events
             IModEvents events = helper.Events;
+            events.GameLoop.GameLaunched += this.OnGameLaunched;
             events.GameLoop.SaveLoaded += this.OnSaveLoaded;
             events.Input.ButtonPressed += this.OnButtonPressed;
             events.Multiplayer.ModMessageReceived += this.OnModMessageReceived;
             // helper.Events.GameLoop.DayStarted += this.OnDayStarted;
 
             // SMAPI Commands
-            SHelper.ConsoleCommands.Add("list_horses", "Lists the names of all horses on your farm.", Framework.CommandHandler.OnCommandReceived);
-            SHelper.ConsoleCommands.Add("reskin_horse", "Specify [horse name] and the [skin id] (1-8) you want to assign to it. Try list_horses to see available horses.", Framework.CommandHandler.OnCommandReceived);
-            SHelper.ConsoleCommands.Add("reskin_horse_id", "Specify [horse id] and the [skin id] (1-8) you want to assign to it. Try list_horses to see available horses.", Framework.CommandHandler.OnCommandReceived);
+            SHelper.ConsoleCommands.Add("list_horses", "Lists the names of all horses on your farm.", CommandHandler.OnCommandReceived);
+            SHelper.ConsoleCommands.Add("reskin_horse", "Specify [horse name] and the [skin id] (1-8) you want to assign to it. Try list_horses to see available horses.", CommandHandler.OnCommandReceived);
+            SHelper.ConsoleCommands.Add("reskin_horse_id", "Specify [horse id] and the [skin id] (1-8) you want to assign to it. Try list_horses to see available horses.", CommandHandler.OnCommandReceived);
 
         }
 
         /*********
         ** Private methods
         *********/
+
+        private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
+        {
+            // add Generic Mod Config Menu integration
+            config = SHelper.ReadConfig<MultiplayerHorseReskinModConfig>();
+            var api = SHelper.ModRegistry.GetApi<GenericModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
+
+            api.RegisterModConfig(ModManifest, () => config = new MultiplayerHorseReskinModConfig(), () => SHelper.WriteConfig(config));
+            api.RegisterSimpleOption(ModManifest, "Total horse skin assets", "The number of .png files in the /assets folder for this mod", () => config.AmountOfHorseSkins, (int val) => config.AmountOfHorseSkins = val);
+        }
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
 
@@ -78,11 +93,13 @@ namespace MultiplayerHorseReskin
                 {
                     IsEnabled = false;
                     SMonitor.Log("This mod is disabled because the host player doesn't have it installed.", LogLevel.Warn);
+                    return;
                 }
                 else if (hostVersion.IsOlderThan(this.MinHostVersion))
                 {
                     IsEnabled = false;
                     SMonitor.Log($"This mod is disabled because the host player has {this.ModManifest.Name} {hostVersion}, but the minimum compatible version is {this.MinHostVersion}.", LogLevel.Warn);
+                    return;
                 }
                 else
                     IsEnabled = true;
@@ -133,20 +150,16 @@ namespace MultiplayerHorseReskin
         /// <param name="e">The event arguments.</param>
         private void OnModMessageReceived(object sender, ModMessageReceivedEventArgs e)
         {
-            SMonitor.Log($"OnModMessageReceived", LogLevel.Debug);
-            // TODO: handle mod message received for horse reskin by farmhands
             if (e.Type == ReskinHorseMessageId && Context.IsMainPlayer && e.FromModID == SModManifest.UniqueID)
             {
-                SMonitor.Log($"OnModMessageReceived - IsMainPlayer", LogLevel.Debug);
-                Framework.HorseReskinMessage message = e.ReadAs<Framework.HorseReskinMessage>();
+                HorseReskinMessage message = e.ReadAs<HorseReskinMessage>();
                 SaveHorseReskin(message.horseId, message.skinId);
                 return;
             }
-            if(e.Type == ReloadHorseSpritesMessageId && !Context.IsMainPlayer && e.FromModID == SModManifest.UniqueID)
+            if (e.Type == ReloadHorseSpritesMessageId && !Context.IsMainPlayer && e.FromModID == SModManifest.UniqueID)
             {
-                SMonitor.Log($"OnModMessageReceived - !IsMainPlayer", LogLevel.Debug);
-                Framework.HorseReskinMessage message = e.ReadAs<Framework.HorseReskinMessage>();
-                LoadHorseSprites(GetHorseById(message.horseId));
+                HorseReskinMessage message = e.ReadAs<HorseReskinMessage>();
+                LoadHorseSprites(GetHorseById(message.horseId), message.skinId);
             }
         }
 
@@ -199,14 +212,39 @@ namespace MultiplayerHorseReskin
         /// <returns>true if not a tractor</returns>
         public static bool IsNotATractor(Horse horse) { return !horse.Name.StartsWith("tractor/"); }
 
-        public static void LoadHorseSprites(Horse horse)
+        public static void LoadHorseSprites(Horse horse, int? skinId = null)
         {
+            if (skinId != null)
+            {
+                if (skinId > 0)
+                {
+                    if (skinId <= config.AmountOfHorseSkins)
+                    {
+                        horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{skinId}.png");
+                        SMonitor.Log($"Loaded skin {skinId} for horse {horse.displayName}", LogLevel.Info);
+                    }
+                    else
+                    {
+                        SMonitor.Log($"Tried to load skin {skinId} for {horse.displayName}, but config file states there are only {config.AmountOfHorseSkins} skins in /assets", LogLevel.Warn);
+                    }
+                }
+                else
+                {
+                    SMonitor.Log($"No skin was set for {skinId}", LogLevel.Info);
+                }
 
-            // TODO: better handling of horse.Manners
+                return;
+            }
             if (horse.Manners > 0)
             {
-                horse.Sprite = new AnimatedSprite($"Animals\\MultiplayerHorseReskin\\horse_{horse.Manners}", 7, 32, 32);
-                SMonitor.Log($"Loaded skin {horse.Manners} for horse {horse.displayName}", LogLevel.Info);
+                if (horse.Manners <= config.AmountOfHorseSkins)
+                {
+                    horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
+                    SMonitor.Log($"Loaded skin {horse.Manners} for horse {horse.displayName}", LogLevel.Info);
+                } else
+                {
+                    SMonitor.Log($"Tried to load skin {horse.Manners} for {horse.displayName}, but config file states there are only {config.AmountOfHorseSkins} skins in /assets", LogLevel.Warn);
+                }
             } else
             {
                 SMonitor.Log($"No skin was set for {horse.displayName}", LogLevel.Info);
@@ -217,18 +255,18 @@ namespace MultiplayerHorseReskin
         {
             if (!Context.IsMainPlayer)
                 return;
+
             // TODO: some validation?
             var horse = GetHorseById(horseId);
             if (horse != null)
             {
                 horse.Manners = skinId;
                 SMonitor.Log($"Saving skin {skinId} to horse {horse.displayName}", LogLevel.Info);
-
                 LoadHorseSprites(horse);
 
-                // TODO: is there a way to wait for next save/tick?
+                // TODO: this may not be necessary? unsure
                 SHelper.Multiplayer.SendMessage(
-                    message: new Framework.HorseReskinMessage(horseId, skinId), // TODO: new message class, redundant skinId
+                    message: new HorseReskinMessage(horseId, skinId), // TODO: new message class, redundant skinId
                     messageType: ReloadHorseSpritesMessageId,
                     modIDs: new[] { SModManifest.UniqueID }
                 );
