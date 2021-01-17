@@ -59,7 +59,9 @@ namespace MultiplayerHorseReskin
             events.GameLoop.SaveLoaded += this.OnSaveLoaded;
             events.Input.ButtonPressed += this.OnButtonPressed;
             events.Multiplayer.ModMessageReceived += this.OnModMessageReceived;
-            // helper.Events.GameLoop.DayStarted += this.OnDayStarted;
+            events.GameLoop.DayStarted += this.OnDayStarted;
+            events.World.NpcListChanged += this.OnNpcListChanged;
+
 
             // SMAPI Commands
             SHelper.ConsoleCommands.Add("list_horses", "Lists the names of all horses on your farm.", CommandHandler.OnCommandReceived);
@@ -81,6 +83,7 @@ namespace MultiplayerHorseReskin
             api.RegisterModConfig(ModManifest, () => config = new MultiplayerHorseReskinModConfig(), () => SHelper.WriteConfig(config));
             api.RegisterSimpleOption(ModManifest, "Total horse skin assets", "The number of .png files in the /assets folder for this mod", () => config.AmountOfHorseSkins, (int val) => config.AmountOfHorseSkins = val);
         }
+
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
 
@@ -104,12 +107,30 @@ namespace MultiplayerHorseReskin
                 else
                     IsEnabled = true;
             }
-            // TODO: LoadHorseSprites
+
             foreach (var d in GetHorsesDict())
             {
                 LoadHorseSprites(d.Value);
             }
 
+        }
+
+        private void OnDayStarted(object sender, DayStartedEventArgs e)
+        {
+            if (!IsEnabled)
+                return;
+
+            foreach (var d in GetHorsesDict())
+                LoadHorseSprites(d.Value);
+        }
+
+        private void OnNpcListChanged(object sender, NpcListChangedEventArgs e)
+        {
+            if (!IsEnabled)
+                return;
+            SMonitor.Log("OnNpcListChanged", LogLevel.Debug);
+            foreach (var d in GetHorsesDict())
+                LoadHorseSprites(d.Value);
         }
 
         private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
@@ -138,7 +159,7 @@ namespace MultiplayerHorseReskin
                     {
                         // TODO: suppress action if mounting or dismounting horse
                         // TODO: present texture options for horses
-                        SMonitor.Log("---------- Clicked -------------", LogLevel.Debug);
+                        // SMonitor.Log("---------- Clicked -------------", LogLevel.Debug);
                         break;
                     }
                 }
@@ -176,8 +197,16 @@ namespace MultiplayerHorseReskin
                 if (npc is Horse && IsNotATractor(npc as Horse))
                 {
                     Horse horse = npc as Horse;
-                    horses.Add(horse.HorseId, npc as Horse);
+                    horses.Add(horse.HorseId, horse);
                 }
+            foreach(Farmer player in Game1.getAllFarmers())
+            {
+                if(player.mount != null)
+                {
+                    Horse mountedHorse = player.mount;
+                    horses.Add(mountedHorse.HorseId, mountedHorse);
+                }
+            }
                     
 
             return horses;
