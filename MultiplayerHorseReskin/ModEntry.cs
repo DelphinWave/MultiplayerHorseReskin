@@ -197,21 +197,40 @@ namespace MultiplayerHorseReskin
         public static Dictionary<Guid, Horse> GetHorsesDict()
         {
             Dictionary<Guid, Horse> horses = new Dictionary<Guid, Horse>();
+
+            // Mounted Horses
+            foreach (Farmer player in Game1.getAllFarmers())
+            {
+                if (player.mount != null)
+                {
+                    Horse mountedHorse = player.mount;
+                    horses.Add(mountedHorse.HorseId, mountedHorse);
+                }
+            }
+
+            // Loop for Farmhands
+            if (!Context.IsMainPlayer) {
+                foreach (GameLocation location in SHelper.Multiplayer.GetActiveLocations())
+                {
+                    foreach(NPC npc in location.characters)
+                    {
+                        if (npc is Horse && IsNotATractor(npc as Horse))
+                        {
+                            Horse horse = npc as Horse;
+                            horses.Add(horse.HorseId, horse);
+                        }
+                    }
+                }
+                return horses;
+            }
+
+            // Loop for Host
             foreach (NPC npc in Utility.getAllCharacters())
                 if (npc is Horse && IsNotATractor(npc as Horse))
                 {
                     Horse horse = npc as Horse;
                     horses.Add(horse.HorseId, horse);
                 }
-            foreach(Farmer player in Game1.getAllFarmers())
-            {
-                if(player.mount != null)
-                {
-                    Horse mountedHorse = player.mount;
-                    horses.Add(mountedHorse.HorseId, mountedHorse);
-                }
-            }
-                    
 
             return horses;
         }
