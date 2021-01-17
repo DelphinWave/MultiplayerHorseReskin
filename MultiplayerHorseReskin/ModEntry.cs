@@ -26,7 +26,7 @@ namespace MultiplayerHorseReskin
         internal static bool IsEnabled = true;
 
         // The minimum version the host must have for the mod to be enabled on a farmhand.\
-        private readonly string MinHostVersion = "1.0.0";
+        private readonly string MinHostVersion = "1.0.2";
 
         // A request from a farmhand to reskin a horse
         internal static readonly string ReskinHorseMessageId = "HorseReskin";
@@ -60,7 +60,8 @@ namespace MultiplayerHorseReskin
             events.Input.ButtonPressed += this.OnButtonPressed;
             events.Multiplayer.ModMessageReceived += this.OnModMessageReceived;
             events.GameLoop.DayStarted += this.OnDayStarted;
-            events.World.NpcListChanged += this.OnNpcListChanged;
+            // events.World.NpcListChanged += this.OnNpcListChanged;
+            events.GameLoop.UpdateTicked += this.OnUpdateTicked;
 
 
             // SMAPI Commands
@@ -124,11 +125,14 @@ namespace MultiplayerHorseReskin
                 LoadHorseSprites(d.Value);
         }
 
-        private void OnNpcListChanged(object sender, NpcListChangedEventArgs e)
+        private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
         {
+            if (!Context.IsWorldReady)
+                return;
+
             if (!IsEnabled)
                 return;
-            SMonitor.Log("OnNpcListChanged", LogLevel.Debug);
+
             foreach (var d in GetHorsesDict())
                 LoadHorseSprites(d.Value);
         }
@@ -250,7 +254,7 @@ namespace MultiplayerHorseReskin
                     if (skinId <= config.AmountOfHorseSkins)
                     {
                         horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{skinId}.png");
-                        SMonitor.Log($"Loaded skin {skinId} for horse {horse.displayName}", LogLevel.Info);
+                        // SMonitor.Log($"Loaded skin {skinId} for horse {horse.displayName}", LogLevel.Info);
                     }
                     else
                     {
@@ -259,7 +263,7 @@ namespace MultiplayerHorseReskin
                 }
                 else
                 {
-                    SMonitor.Log($"No skin was set for {skinId}", LogLevel.Info);
+                    // SMonitor.Log($"No skin was set for {skinId}", LogLevel.Info);
                 }
 
                 return;
@@ -269,14 +273,14 @@ namespace MultiplayerHorseReskin
                 if (horse.Manners <= config.AmountOfHorseSkins)
                 {
                     horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
-                    SMonitor.Log($"Loaded skin {horse.Manners} for horse {horse.displayName}", LogLevel.Info);
+                    // SMonitor.Log($"Loaded skin {horse.Manners} for horse {horse.displayName}", LogLevel.Info);
                 } else
                 {
                     SMonitor.Log($"Tried to load skin {horse.Manners} for {horse.displayName}, but config file states there are only {config.AmountOfHorseSkins} skins in /assets", LogLevel.Warn);
                 }
             } else
             {
-                SMonitor.Log($"No skin was set for {horse.displayName}", LogLevel.Info);
+                // SMonitor.Log($"No skin was set for {horse.displayName}", LogLevel.Info);
             }
         }
 
