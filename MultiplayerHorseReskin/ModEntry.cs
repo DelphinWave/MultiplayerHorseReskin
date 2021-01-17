@@ -13,6 +13,7 @@ using StardewValley.Menus;
 using Microsoft.Xna.Framework.Graphics;
 using MultiplayerHorseReskin.Framework;
 using MultiplayerHorseReskin.Common;
+using System.IO;
 
 namespace MultiplayerHorseReskin
 {
@@ -204,7 +205,8 @@ namespace MultiplayerHorseReskin
                 if (player.mount != null)
                 {
                     Horse mountedHorse = player.mount;
-                    horses.Add(mountedHorse.HorseId, mountedHorse);
+                    if(!horses.ContainsKey(mountedHorse.HorseId))
+                        horses.Add(mountedHorse.HorseId, mountedHorse);
                 }
             }
 
@@ -217,7 +219,8 @@ namespace MultiplayerHorseReskin
                         if (npc is Horse && IsNotATractor(npc as Horse))
                         {
                             Horse horse = npc as Horse;
-                            horses.Add(horse.HorseId, horse);
+                            if (!horses.ContainsKey(horse.HorseId))
+                                horses.Add(horse.HorseId, horse);
                         }
                     }
                 }
@@ -229,7 +232,8 @@ namespace MultiplayerHorseReskin
                 if (npc is Horse && IsNotATractor(npc as Horse))
                 {
                     Horse horse = npc as Horse;
-                    horses.Add(horse.HorseId, horse);
+                    if (!horses.ContainsKey(horse.HorseId))
+                        horses.Add(horse.HorseId, horse);
                 }
 
             return horses;
@@ -272,17 +276,9 @@ namespace MultiplayerHorseReskin
                 {
                     if (skinId <= config.AmountOfHorseSkins)
                     {
-                        horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{skinId}.png");
-                        // SMonitor.Log($"Loaded skin {skinId} for horse {horse.displayName}", LogLevel.Info);
+                        if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{skinId}.png")))
+                            horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{skinId}.png");
                     }
-                    else
-                    {
-                        SMonitor.Log($"Tried to load skin {skinId} for {horse.displayName}, but config file states there are only {config.AmountOfHorseSkins} skins in /assets", LogLevel.Warn);
-                    }
-                }
-                else
-                {
-                    // SMonitor.Log($"No skin was set for {skinId}", LogLevel.Info);
                 }
 
                 return;
@@ -291,15 +287,9 @@ namespace MultiplayerHorseReskin
             {
                 if (horse.Manners <= config.AmountOfHorseSkins)
                 {
-                    horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
-                    // SMonitor.Log($"Loaded skin {horse.Manners} for horse {horse.displayName}", LogLevel.Info);
-                } else
-                {
-                    SMonitor.Log($"Tried to load skin {horse.Manners} for {horse.displayName}, but config file states there are only {config.AmountOfHorseSkins} skins in /assets", LogLevel.Warn);
+                    if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{horse.Manners}.png")))
+                        horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
                 }
-            } else
-            {
-                // SMonitor.Log($"No skin was set for {horse.displayName}", LogLevel.Info);
             }
         }
 
@@ -308,7 +298,12 @@ namespace MultiplayerHorseReskin
             if (!Context.IsMainPlayer)
                 return;
 
-            // TODO: some validation?
+            if (skinId > config.AmountOfHorseSkins)
+            {
+                SMonitor.Log($"Tried to save skin {skinId}, but config file states there are only {config.AmountOfHorseSkins} skins in /assets", LogLevel.Warn);
+                return;
+            }
+
             var horse = GetHorseById(horseId);
             if (horse != null)
             {
@@ -316,9 +311,8 @@ namespace MultiplayerHorseReskin
                 SMonitor.Log($"Saving skin {skinId} to horse {horse.displayName}", LogLevel.Info);
                 LoadHorseSprites(horse);
 
-                // TODO: this may not be necessary? unsure
                 SHelper.Multiplayer.SendMessage(
-                    message: new HorseReskinMessage(horseId, skinId), // TODO: new message class, redundant skinId
+                    message: new HorseReskinMessage(horseId, skinId),
                     messageType: ReloadHorseSpritesMessageId,
                     modIDs: new[] { SModManifest.UniqueID }
                 );
