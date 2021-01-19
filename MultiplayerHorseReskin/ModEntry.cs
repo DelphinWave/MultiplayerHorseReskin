@@ -15,6 +15,8 @@ using MultiplayerHorseReskin.Framework;
 using MultiplayerHorseReskin.Common;
 using System.IO;
 
+using System.Linq;
+
 namespace MultiplayerHorseReskin
 {
     public class ModEntry : Mod
@@ -23,28 +25,23 @@ namespace MultiplayerHorseReskin
         internal static IModHelper SHelper;
         internal static IManifest SModManifest;
 
-        // Whether the mod is enabled for the current farmhand.
-        internal static bool IsEnabled = true;
+        
+        internal static bool IsEnabled = true; // Whether the mod is enabled for the current farmhand.
 
-        // The minimum version the host must have for the mod to be enabled on a farmhand.\
-        private readonly string MinHostVersion = "1.0.2";
-
-        // A request from a farmhand to reskin a horse
-        internal static readonly string ReskinHorseMessageId = "HorseReskin";
-
-        // Inform farmhands to update horse sprites
-        internal static readonly string ReloadHorseSpritesMessageId = "HorseSpriteReload";
-
-        /// <summary>The mod settings.</summary>
         private static MultiplayerHorseReskinModConfig config;
 
-        /// <summary>The configured key bindings.</summary>
-        // private ModConfigKeys Keys;
+        private static Dictionary<Guid, int> horseSkinMap = new Dictionary<Guid, int>();
+        private static Dictionary<Guid, Horse> horseIdMap = new Dictionary<Guid, Horse>();
+        private static Dictionary<int, Texture2D> skinTextureMap = new Dictionary<int, Texture2D>();
 
+        // constants
+        internal static readonly string ReskinHorseMessageId = "HorseReskin"; // A request from a farmhand to reskin a horse
+        internal static readonly string ReloadHorseSpritesMessageId = "HorseSpriteReload"; // Inform farmhands to update horse sprites
+        private readonly uint TextureUpdateRateWithSinglePlayer = 30;
+        private readonly uint TextureUpdateRateWithMultiplePlayers = 3;
 
-        /*********
-        ** Public methods
-        *********/
+        // The minimum version the host must have for the mod to be enabled on a farmhand.
+        private readonly string MinHostVersion = "1.0.4";
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -58,12 +55,12 @@ namespace MultiplayerHorseReskin
             IModEvents events = helper.Events;
             events.GameLoop.GameLaunched += this.OnGameLaunched;
             events.GameLoop.SaveLoaded += this.OnSaveLoaded;
+            events.GameLoop.DayStarted += this.OnDayStarted;
             events.Input.ButtonPressed += this.OnButtonPressed;
             events.Multiplayer.ModMessageReceived += this.OnModMessageReceived;
-            events.GameLoop.DayStarted += this.OnDayStarted;
-            // events.World.NpcListChanged += this.OnNpcListChanged;
-            events.GameLoop.UpdateTicked += this.OnUpdateTicked;
+            events.Multiplayer.PeerConnected += this.OnPeerConnected;
 
+            events.GameLoop.UpdateTicked += this.OnUpdateTicked;
 
             // SMAPI Commands
             SHelper.ConsoleCommands.Add("list_horses", "Lists the names of all horses on your farm.", CommandHandler.OnCommandReceived);
@@ -73,9 +70,8 @@ namespace MultiplayerHorseReskin
         }
 
         /*********
-        ** Private methods
+        ** Event Listeners
         *********/
-
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
             // add Generic Mod Config Menu integration
@@ -113,10 +109,15 @@ namespace MultiplayerHorseReskin
                     IsEnabled = true;
             }
 
-            foreach (var d in GetHorsesDict())
+            if (Context.IsMainPlayer)
             {
-                LoadHorseSprites(d.Value);
+                horseIdMap.Clear();
+                horseIdMap = GetHorsesDict();
+                foreach (var d in horseIdMap)
+                    GenerateHorseSkinMap(d.Value);
+                LoadAllSprites();
             }
+
 
         }
 
@@ -125,20 +126,42 @@ namespace MultiplayerHorseReskin
             if (!IsEnabled)
                 return;
 
-            foreach (var d in GetHorsesDict())
-                LoadHorseSprites(d.Value);
+            horseIdMap.Clear();
+            horseIdMap = GetHorsesDict();
+
+            foreach (var d in horseIdMap)
+                ReLoadHorseSprites(d.Value);
+        }
+
+        private void OnPeerConnected(object sender, PeerConnectedEventArgs e)
+        {
+            if (!Context.IsMainPlayer)
+                return; 
+
+            foreach(var d in horseSkinMap)
+            {
+                var horseId = d.Key;
+                var skinId = d.Value;
+                SendMultiplayerReloadSkinMessage(horseId, skinId);
+            }                
         }
 
         private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
         {
-            if (!Context.IsWorldReady)
-                return;
-
             if (!IsEnabled)
                 return;
 
-            foreach (var d in GetHorsesDict())
-                LoadHorseSprites(d.Value);
+            // multiplayer: override textures in the current location
+            if (Context.IsWorldReady && Game1.currentLocation != null)
+            {
+                uint updateRate = Game1.currentLocation.farmers.Count > 1 ? TextureUpdateRateWithMultiplePlayers : TextureUpdateRateWithSinglePlayer;
+                if (e.IsMultipleOf(updateRate))
+                {
+                    foreach (Horse horse in GetHorsesIn(Game1.currentLocation))
+                        if(horseSkinMap.ContainsKey(horse.HorseId) && skinTextureMap.ContainsKey(horseSkinMap[horse.HorseId]))
+                            horse.Sprite.spriteTexture =  skinTextureMap[horseSkinMap[horse.HorseId]];
+                }
+            }
         }
 
         private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
@@ -160,7 +183,6 @@ namespace MultiplayerHorseReskin
 
             if(e.Button.IsActionButton())
             {
-
                 foreach(Stable stable in GetHorseStables())
                 {
                     if (IsPlayerInStable(stable))
@@ -174,9 +196,6 @@ namespace MultiplayerHorseReskin
             }
         }
 
-        /// <summary> Raised after a mod message is received over the network. </summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event arguments.</param>
         private void OnModMessageReceived(object sender, ModMessageReceivedEventArgs e)
         {
             if (e.Type == ReskinHorseMessageId && Context.IsMainPlayer && e.FromModID == SModManifest.UniqueID)
@@ -187,8 +206,15 @@ namespace MultiplayerHorseReskin
             }
             if (e.Type == ReloadHorseSpritesMessageId && !Context.IsMainPlayer && e.FromModID == SModManifest.UniqueID)
             {
+                if (horseIdMap.Count <= 0)
+                {
+                    horseIdMap = GetHorsesDict();
+                    LoadAllSprites();
+                }
+
                 HorseReskinMessage message = e.ReadAs<HorseReskinMessage>();
-                LoadHorseSprites(GetHorseById(message.horseId), message.skinId);
+                UpdateHorseSkinMap(message.horseId, message.skinId);
+                ReLoadHorseSprites(GetHorseById(message.horseId));
             }
         }
 
@@ -245,7 +271,7 @@ namespace MultiplayerHorseReskin
         /// <summary> Gets Horse by id </summary>
         /// <param name="horseId">id of horse you wish to get</param>
         /// <returns>Horse object</returns>
-        public static Horse GetHorseById(Guid horseId) { return GetHorsesDict()[horseId]; }
+        public static Horse GetHorseById(Guid horseId) { return horseIdMap[horseId]; }
 
 
         /// <summary> Gets all stables that are fully constructed and contain a horse (i.e. not a tractor) </summary>
@@ -269,31 +295,62 @@ namespace MultiplayerHorseReskin
         /// <summary> Checks if given horse is not a tractor </summary>
         /// <param name="horse">Horse object</param>
         /// <returns>true if not a tractor</returns>
-        public static bool IsNotATractor(Horse horse) { return !horse.Name.StartsWith("tractor/"); }
+        public static bool IsNotATractor(Horse horse) { return horse.Name == null ? true : !horse.Name.StartsWith("tractor/"); }
 
-        public static void LoadHorseSprites(Horse horse, int? skinId = null)
+        public void GenerateHorseSkinMap(Horse horse)
         {
-            if (skinId != null)
-            {
-                if (skinId > 0)
-                {
-                    if (skinId <= config.AmountOfHorseSkins)
-                    {
-                        if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{skinId}.png")))
-                            horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{skinId}.png");
-                    }
-                }
-
+            if (!Context.IsMainPlayer)
                 return;
-            }
+
             if (horse.Manners > 0)
             {
                 if (horse.Manners <= config.AmountOfHorseSkins)
                 {
                     if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{horse.Manners}.png")))
-                        horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
+                    {
+                        // horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
+                        UpdateHorseSkinMap(horse.HorseId, horse.Manners);
+                    }
                 }
             }
+        }
+        public static void ReLoadHorseSprites(Horse horse)
+        {
+            if (horseSkinMap.ContainsKey(horse.HorseId) && horseSkinMap[horse.HorseId] > 0)
+            {
+                int skinId = horseSkinMap[horse.HorseId];
+
+                if (skinId <= config.AmountOfHorseSkins)
+                {
+                    if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{skinId}.png")))
+                    {
+                        horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{skinId}.png");
+                    }
+                }
+            }
+        }
+
+        public static void SendMultiplayerReloadSkinMessage(Guid horseId, int skinId)
+        {
+            if (Context.IsMainPlayer)
+            {
+                SHelper.Multiplayer.SendMessage(
+                    message: new HorseReskinMessage(horseId, skinId),
+                    messageType: ReloadHorseSpritesMessageId,
+                    modIDs: new[] { SModManifest.UniqueID }
+                );
+            }
+        }
+        
+        public static void UpdateHorseSkinMap(Guid horseId, int skinId)
+        {
+            horseSkinMap[horseId] = skinId;
+        }
+
+        public static void LoadAllSprites()
+        {
+            for (var i = 1; i <= config.AmountOfHorseSkins; i++)
+                skinTextureMap[i] = SHelper.Content.Load<Texture2D>($"assets/horse_{i}.png");
         }
 
         public static void SaveHorseReskin(Guid horseId, int skinId)
@@ -312,24 +369,39 @@ namespace MultiplayerHorseReskin
             {
                 horse.Manners = skinId;
                 SMonitor.Log($"Saving skin {skinId} to horse {horse.displayName}", LogLevel.Info);
-                LoadHorseSprites(horse);
-
-                SHelper.Multiplayer.SendMessage(
-                    message: new HorseReskinMessage(horseId, skinId),
-                    messageType: ReloadHorseSpritesMessageId,
-                    modIDs: new[] { SModManifest.UniqueID }
-                );
+                UpdateHorseSkinMap(horseId, skinId);
+                ReLoadHorseSprites(horse);
+                SendMultiplayerReloadSkinMessage(horseId, skinId);
             }
         }
 
         public static Guid? GetHorseIdFromName(string horseName)
         {
-            foreach (var d in GetHorsesDict())
+            foreach (var d in horseIdMap)
                 if (d.Value.displayName == horseName)
                     return d.Key;
 
             SMonitor.Log($"No horse named {horseName} was found", LogLevel.Error);
             return null;
+        }
+
+        /// <summary>Get all horses in the given location.</summary>
+        /// <param name="location">The location to scan.</param>
+        private IEnumerable<Horse> GetHorsesIn(GameLocation location)
+        {
+            // single-player
+            if (!Context.IsMultiplayer)
+                return location.characters.OfType<Horse>().Where(h => IsNotATractor(h));
+
+            // multiplayer
+            return
+                location.characters.OfType<Horse>().Where(h => IsNotATractor(h))
+                    .Concat(
+                        from player in location.farmers
+                        where (player.mount != null && IsNotATractor(player.mount))
+                        select player.mount
+                    )
+                    .Distinct();
         }
     }
 }

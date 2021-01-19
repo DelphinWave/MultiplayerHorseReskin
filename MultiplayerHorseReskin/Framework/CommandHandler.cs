@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-
 using StardewModdingAPI;
-
-using StardewValley;
-using StardewValley.Characters;
-using StardewValley.Menus;
 
 namespace MultiplayerHorseReskin.Framework
 {
@@ -83,9 +77,19 @@ namespace MultiplayerHorseReskin.Framework
                     }
                     var horseId = args[0];
                     skinId = args[1];
-                    // TODO: actually send a multiplayer mod message
-                    // TODO: better handling
-                    ModEntry.SaveHorseReskin(Guid.Parse(horseId), int.Parse(skinId));
+                    
+                    if (Context.IsMainPlayer)
+                    {
+                        ModEntry.SaveHorseReskin(Guid.Parse(horseId), int.Parse(skinId));
+                    }
+                    else
+                    {
+                        ModEntry.SHelper.Multiplayer.SendMessage(
+                            message: new HorseReskinMessage(Guid.Parse(horseId), int.Parse(skinId)),
+                            messageType: ModEntry.ReskinHorseMessageId,
+                            modIDs: new[] { ModEntry.SModManifest.UniqueID }
+                        );
+                    }
                     return;
                 default:
                     ModEntry.SMonitor.Log($"Unknown command '{command}'.", LogLevel.Error);
