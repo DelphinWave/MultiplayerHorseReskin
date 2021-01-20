@@ -24,7 +24,6 @@ namespace MultiplayerHorseReskin
         internal static IMonitor SMonitor;
         internal static IModHelper SHelper;
         internal static IManifest SModManifest;
-
         
         internal static bool IsEnabled = true; // Whether the mod is enabled for the current farmhand.
 
@@ -47,6 +46,7 @@ namespace MultiplayerHorseReskin
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
+            // Static variables
             SMonitor = Monitor;
             SHelper = helper;
             SModManifest = ModManifest;
@@ -56,17 +56,15 @@ namespace MultiplayerHorseReskin
             events.GameLoop.GameLaunched += this.OnGameLaunched;
             events.GameLoop.SaveLoaded += this.OnSaveLoaded;
             events.GameLoop.DayStarted += this.OnDayStarted;
+            events.GameLoop.UpdateTicked += this.OnUpdateTicked;
             events.Input.ButtonPressed += this.OnButtonPressed;
             events.Multiplayer.ModMessageReceived += this.OnModMessageReceived;
             events.Multiplayer.PeerConnected += this.OnPeerConnected;
-
-            events.GameLoop.UpdateTicked += this.OnUpdateTicked;
 
             // SMAPI Commands
             SHelper.ConsoleCommands.Add("list_horses", "Lists the names of all horses on your farm.", CommandHandler.OnCommandReceived);
             SHelper.ConsoleCommands.Add("reskin_horse", "Specify [horse name] and the [skin id] (1-8) you want to assign to it. Try list_horses to see available horses.", CommandHandler.OnCommandReceived);
             SHelper.ConsoleCommands.Add("reskin_horse_id", "Specify [horse id] and the [skin id] (1-8) you want to assign to it. Try list_horses to see available horses.", CommandHandler.OnCommandReceived);
-
         }
 
         /*********
@@ -74,10 +72,11 @@ namespace MultiplayerHorseReskin
         *********/
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
-            // add Generic Mod Config Menu integration
+            // Read config
             config = SHelper.ReadConfig<MultiplayerHorseReskinModConfig>();
-            var api = SHelper.ModRegistry.GetApi<GenericModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
 
+            // Add Generic Mod Config Menu integration
+            var api = SHelper.ModRegistry.GetApi<GenericModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
             if (api != null)
             {
                 api.RegisterModConfig(ModManifest, () => config = new MultiplayerHorseReskinModConfig(), () => SHelper.WriteConfig(config));
@@ -109,6 +108,7 @@ namespace MultiplayerHorseReskin
                     IsEnabled = true;
             }
 
+            // initialize maps and sprites
             if (Context.IsMainPlayer)
             {
                 horseIdMap.Clear();
@@ -117,8 +117,6 @@ namespace MultiplayerHorseReskin
                     GenerateHorseSkinMap(d.Value);
                 LoadAllSprites();
             }
-
-
         }
 
         private void OnDayStarted(object sender, DayStartedEventArgs e)
@@ -347,7 +345,7 @@ namespace MultiplayerHorseReskin
             horseSkinMap[horseId] = skinId;
         }
 
-        public static void LoadAllSprites()
+        private static void LoadAllSprites()
         {
             for (var i = 1; i <= config.AmountOfHorseSkins; i++)
                 skinTextureMap[i] = SHelper.Content.Load<Texture2D>($"assets/horse_{i}.png");

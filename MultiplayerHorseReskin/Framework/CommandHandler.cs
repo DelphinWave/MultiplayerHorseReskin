@@ -3,17 +3,6 @@ using StardewModdingAPI;
 
 namespace MultiplayerHorseReskin.Framework
 {
-
-    class HorseReskinMessage
-    {
-        public Guid horseId;
-        public int skinId;
-        public HorseReskinMessage(Guid horseId, int skinId)
-        {
-            this.horseId = horseId;
-            this.skinId = skinId;
-        }
-    }
     class CommandHandler
     {
         /// <summary>
@@ -33,8 +22,7 @@ namespace MultiplayerHorseReskin.Framework
                 return;
             }
 
-            // Skin id (1-8)
-            var skinId = "0";
+            string skinId;
 
             switch (command)
             {
@@ -47,7 +35,7 @@ namespace MultiplayerHorseReskin.Framework
                 case "reskin_horse":
                     if (args.Length < 2 || args.Length > 2)
                     {
-                        ModEntry.SMonitor.Log($"reskin_horse requires 2 arguments, the name of the horse you wish to reskin and the id of the skin (1-8) you want for that horse", LogLevel.Error);
+                        ModEntry.SMonitor.Log($"reskin_horse requires 2 arguments, the name of the horse you wish to reskin and the id of the skin you want for that horse", LogLevel.Error);
                         return;
                     }
                     var horseName = args[0];
@@ -77,6 +65,8 @@ namespace MultiplayerHorseReskin.Framework
                     }
                     var horseId = args[0];
                     skinId = args[1];
+
+                    // TODO: consider checking if horse id exists
                     
                     if (Context.IsMainPlayer)
                     {

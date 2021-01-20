@@ -69,6 +69,7 @@
   <ItemGroup>
     <Compile Include="Common\GenericModConfigMenu.cs" />
     <Compile Include="Framework\CommandHandler.cs" />
+    <Compile Include="Framework\HorseReskinMessage.cs" />
     <Compile Include="Framework\MultiplayerHorseReskinModConfig.cs" />
     <Compile Include="ModEntry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
