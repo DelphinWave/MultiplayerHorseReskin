@@ -40,7 +40,7 @@ namespace MultiplayerHorseReskin
         private readonly uint TextureUpdateRateWithMultiplePlayers = 3;
 
         // The minimum version the host must have for the mod to be enabled on a farmhand.
-        private readonly string MinHostVersion = "1.0.4";
+        private readonly string MinHostVersion = "1.1.0";
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -185,9 +185,10 @@ namespace MultiplayerHorseReskin
                 {
                     if (IsPlayerInStable(stable))
                     {
-                        // TODO: suppress action if mounting or dismounting horse
-                        // TODO: present texture options for horses
-                        // SMonitor.Log("---------- Clicked -------------", LogLevel.Debug);
+                        if (Game1.activeClickableMenu == null)
+                        {
+                            Game1.activeClickableMenu = new HorseReskinMenu(stable.HorseId, skinTextureMap);
+                        }
                         break;
                     }
                 }
