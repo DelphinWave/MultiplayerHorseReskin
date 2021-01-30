@@ -14,23 +14,25 @@ namespace MultiplayerHorseReskin.Framework
 {
     class HorseReskinMenu : IClickableMenu
     {
+        // Handling Skin
         public int currentSkinId = 1;
         public Dictionary<int, Texture2D> skinTextureMap;
         public Guid horseId;
 
+        // Menu Textures
+        public ClickableTextureComponent horsePreview;
         public ClickableTextureComponent backButton;
         public ClickableTextureComponent forwardButton;
         public ClickableTextureComponent okButton;
 
-        public ClickableTextureComponent horsePreview;
-        
-
-        
-
+        // Constants
         private static readonly int horseSpriteWidth, horseSpriteHeight = horseSpriteWidth = 32;
         private static readonly float horsePreviewScale = 4f;
         private static readonly int horseSpriteIndex = 8;
         private static readonly int menuPadding = 64;
+        private static readonly int okButtonWidth, okButtonHeight = okButtonWidth = 64;
+        private static readonly int backButtonWidth, forwardButtonWidth = backButtonWidth = 48;
+        private static readonly int backButtonHeight, forwardButtonHeight = backButtonHeight = 44;
 
         private static readonly int maxWidthOfMenu = (horseSpriteWidth * (int)horsePreviewScale) + menuPadding;
         private static readonly int maxHeightOfMenu = (horseSpriteHeight * (int)horsePreviewScale) + menuPadding;
@@ -44,26 +46,10 @@ namespace MultiplayerHorseReskin.Framework
         {
             this.horseId = horseId;
             this.skinTextureMap = new Dictionary<int, Texture2D>(skinTextureMap);
-            if (Game1.options.SnappyMenus)
-            {
-                base.populateClickableComponentList();
-                this.snapToDefaultClickableComponent();
-            }
             resetBounds();
         }
 
         public Texture2D CurrentHorseTexture => this.skinTextureMap[this.currentSkinId];
-
-        public override void snapToDefaultClickableComponent()
-        {
-            base.currentlySnappedComponent = base.getComponentWithID(forwardButtonId);
-            this.snapCursorToCurrentSnappedComponent();
-        }
-
-        //public override void receiveKeyPress(Keys key)
-        //{
-
-        //}
 
         public override void receiveGamePadButton(Buttons b)
         {
@@ -135,10 +121,9 @@ namespace MultiplayerHorseReskin.Framework
 
         public override void draw(SpriteBatch b) {
             b.Draw(Game1.fadeToBlackRect, Game1.graphics.GraphicsDevice.Viewport.Bounds, Color.Black * 0.5f);
+            
+            IClickableMenu.drawTextureBox(b, base.xPositionOnScreen, base.yPositionOnScreen, base.width, base.height, Color.White);
             base.draw(b);
-            IClickableMenu.drawTextureBox(b, base.xPositionOnScreen, base.yPositionOnScreen, maxWidthOfMenu + menuPadding, maxHeightOfMenu + menuPadding, Color.White);
-
-            this.horsePreview.draw(b);
             this.horsePreview.draw(b);
             this.backButton.draw(b);
             this.forwardButton.draw(b);
@@ -173,22 +158,22 @@ namespace MultiplayerHorseReskin.Framework
             base.yPositionOnScreen = Game1.uiViewport.Height / 2 - maxHeightOfMenu / 2 - IClickableMenu.spaceToClearTopBorder;
             base.width = maxWidthOfMenu + IClickableMenu.spaceToClearSideBorder;
             base.height = maxHeightOfMenu + IClickableMenu.spaceToClearTopBorder;
-            base.initialize(base.xPositionOnScreen, base.yPositionOnScreen, base.width, base.height, showUpperRightCloseButton: true);
+            base.initialize(base.xPositionOnScreen, base.yPositionOnScreen, base.width + menuPadding, base.height + menuPadding, showUpperRightCloseButton: true);
 
             this.updateHorsePreview();
 
-            this.backButton = new ClickableTextureComponent(new Rectangle(base.xPositionOnScreen + menuPadding, base.yPositionOnScreen + base.height - menuPadding, 48, 44), Game1.mouseCursors, Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, backButtonId), 1f)
+            this.backButton = new ClickableTextureComponent(new Rectangle(base.xPositionOnScreen + menuPadding, base.yPositionOnScreen + (horseSpriteHeight * (int)horsePreviewScale) + menuPadding, backButtonWidth, backButtonHeight), Game1.mouseCursors, Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, backButtonId), 1f)
             {
                 myID = backButtonId,
                 rightNeighborID = forwardButtonId
             };
-            this.forwardButton = new ClickableTextureComponent(new Rectangle(base.xPositionOnScreen + base.width - menuPadding, base.yPositionOnScreen + base.height - menuPadding, 48, 44), Game1.mouseCursors, Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, forwardButtonId), 1f)
+            this.forwardButton = new ClickableTextureComponent(new Rectangle(base.xPositionOnScreen + base.width - menuPadding - forwardButtonWidth, base.yPositionOnScreen + (horseSpriteHeight * (int)horsePreviewScale) + menuPadding, forwardButtonWidth, forwardButtonHeight), Game1.mouseCursors, Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, forwardButtonId), 1f)
             {
                 myID = forwardButtonId,
                 leftNeighborID = backButtonId,
                 rightNeighborID = okButtonId
             };
-            this.okButton = new ClickableTextureComponent("OK", new Rectangle(base.xPositionOnScreen + base.width - menuPadding, base.yPositionOnScreen + base.height, 64, 64), null, null, Game1.mouseCursors, Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, okButtonId), 1f)
+            this.okButton = new ClickableTextureComponent("OK", new Rectangle(base.xPositionOnScreen + base.width - okButtonWidth - (menuPadding / 4), base.yPositionOnScreen + base.height - okButtonHeight - (menuPadding / 4), okButtonWidth, okButtonHeight), null, null, Game1.mouseCursors, Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, okButtonId), 1f)
             {
                 myID = okButtonId,
                 leftNeighborID = forwardButtonId,
