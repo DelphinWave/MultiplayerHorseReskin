@@ -46,6 +46,12 @@ namespace MultiplayerHorseReskin.Framework
         {
             this.horseId = horseId;
             this.skinTextureMap = new Dictionary<int, Texture2D>(skinTextureMap);
+            if (this.skinTextureMap.Count < 1)
+            {
+                ModEntry.SMonitor.Log("The Horse reskin menu is not available because there are no textures in the texture map", LogLevel.Error);
+                base.exitThisMenu();
+                return;
+            }
             resetBounds();
         }
 
@@ -58,7 +64,7 @@ namespace MultiplayerHorseReskin.Framework
             {
                 this.currentSkinId--;
                 if (this.currentSkinId < 1)
-                    this.currentSkinId = this.skinTextureMap.Count - 1;
+                    this.currentSkinId = this.skinTextureMap.Count;
 
                 Game1.playSound("shwip");
                 this.backButton.scale = this.backButton.baseScale;
@@ -82,7 +88,7 @@ namespace MultiplayerHorseReskin.Framework
             {
                 this.currentSkinId--;
                 if (this.currentSkinId < 1)
-                    this.currentSkinId = this.skinTextureMap.Count - 1;
+                    this.currentSkinId = this.skinTextureMap.Count;
 
                 Game1.playSound("shwip");
                 this.backButton.scale = this.backButton.baseScale;
