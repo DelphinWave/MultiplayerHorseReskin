@@ -177,6 +177,9 @@ namespace MultiplayerHorseReskin
             if (!IsEnabled)
                 return;
 
+            if (!Game1.player.currentLocation.IsFarm)
+                return;
+
             bool IsPlayerInStable(Building stable)
             {
                 var stableRect = new Rectangle(stable.tileX, stable.tileY, stable.tilesWide, stable.tilesHigh);
