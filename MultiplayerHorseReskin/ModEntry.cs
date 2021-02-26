@@ -40,7 +40,7 @@ namespace MultiplayerHorseReskin
         private readonly uint TextureUpdateRateWithMultiplePlayers = 3;
 
         // The minimum version the host must have for the mod to be enabled on a farmhand.
-        private readonly string MinHostVersion = "1.1.1";
+        private readonly string MinHostVersion = "1.1.2";
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -91,8 +91,9 @@ namespace MultiplayerHorseReskin
             IsEnabled = Context.IsMainPlayer;
             if (!IsEnabled)
             {
-                ISemanticVersion playerVersion = SHelper.Multiplayer.GetConnectedPlayer(Game1.player.UniqueMultiplayerID)?.GetMod(this.ModManifest.UniqueID)?.Version;
+                ISemanticVersion playerVersion = this.ModManifest.Version;
                 ISemanticVersion hostVersion = SHelper.Multiplayer.GetConnectedPlayer(Game1.MasterPlayer.UniqueMultiplayerID)?.GetMod(this.ModManifest.UniqueID)?.Version;
+
                 if (hostVersion == null)
                 {
                     IsEnabled = false;
@@ -105,10 +106,11 @@ namespace MultiplayerHorseReskin
                     SMonitor.Log($"This mod is disabled because the host player has {this.ModManifest.Name} {hostVersion}, but the minimum compatible version is {this.MinHostVersion}.", LogLevel.Warn);
                     return;
                 }
-                else if (!playerVersion.Equals(hostVersion))
+                else if (!this.ModManifest.Version.Equals(hostVersion))
                 {
                     IsEnabled = false;
                     SMonitor.Log($"This mod is disabled because the host player has {this.ModManifest.Name} {hostVersion}, but you are using version {playerVersion}. Make sure you both have the same version", LogLevel.Warn);
+                    return;
                 }
                 else
                     IsEnabled = true;
