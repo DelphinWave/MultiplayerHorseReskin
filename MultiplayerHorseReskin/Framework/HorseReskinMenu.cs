@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
+using StardewModdingAPI.Utilities;
 using StardewValley;
 using StardewValley.Menus;
 using System;
@@ -41,7 +42,6 @@ namespace MultiplayerHorseReskin.Framework
         private readonly int forwardButtonId = 33;
         private readonly int okButtonId = 46;
 
-
         public HorseReskinMenu(Guid horseId, Dictionary<int, Texture2D> skinTextureMap)
         {
             this.horseId = horseId;
@@ -79,6 +79,11 @@ namespace MultiplayerHorseReskin.Framework
                 this.forwardButton.scale = this.forwardButton.baseScale;
                 Game1.playSound("shwip");
                 updateHorsePreview();
+            }
+            if (b == Buttons.A) {
+                selectSkin();
+                base.exitThisMenu();
+                Game1.playSound("smallSelect");
             }
         }
         public override void receiveLeftClick(int x, int y, bool playSound = true)

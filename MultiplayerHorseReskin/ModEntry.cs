@@ -198,6 +198,7 @@ namespace MultiplayerHorseReskin
                     {
                         if (Game1.activeClickableMenu == null)
                         {
+                            Helper.Input.Suppress(e.Button);
                             Game1.activeClickableMenu = new HorseReskinMenu(stable.HorseId, skinTextureMap);
                         }
                         break;
@@ -361,6 +362,13 @@ namespace MultiplayerHorseReskin
         {
             for (var i = 1; i <= config.AmountOfHorseSkins; i++)
                 skinTextureMap[i] = SHelper.Content.Load<Texture2D>($"assets/horse_{i}.png");
+
+            // WIP to load all png in folder instead of having user rename the files
+            //List<string> horseSpriteSheets = Directory.EnumerateFiles(Path.Combine(SHelper.DirectoryPath, $"assets/"), "*.png", SearchOption.AllDirectories).ToList();
+            //SMonitor.Log($"#FINDME# horseSpritesheets.Count: " + horseSpriteSheets.Count);
+            //for (int i = 0; i < horseSpriteSheets.Count; i++) {
+            //    SMonitor.Log($"#FINDME#   " + i + ": " + horseSpriteSheets[i]);
+            //}
         }
 
         public static void SaveHorseReskin(Guid horseId, int skinId)
