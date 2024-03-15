@@ -199,6 +199,7 @@ namespace MultiplayerHorseReskin
                         if (Game1.activeClickableMenu == null)
                         {
                             Game1.activeClickableMenu = new HorseReskinMenu(stable.HorseId, skinTextureMap);
+                            Helper.Input.Suppress(e.Button);
                         }
                         break;
                     }

@@ -80,6 +80,12 @@ namespace MultiplayerHorseReskin.Framework
                 Game1.playSound("shwip");
                 updateHorsePreview();
             }
+            if (b == Buttons.A)
+            {
+                selectSkin();
+                base.exitThisMenu();
+                Game1.playSound("smallSelect");
+            }
         }
         public override void receiveLeftClick(int x, int y, bool playSound = true)
         {
