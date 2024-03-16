@@ -12,7 +12,6 @@ using StardewValley.Locations;
 using StardewValley.Menus;
 using Microsoft.Xna.Framework.Graphics;
 using MultiplayerHorseReskin.Framework;
-using MultiplayerHorseReskin.Common;
 using System.IO;
 
 using System.Linq;
@@ -26,8 +25,6 @@ namespace MultiplayerHorseReskin
         internal static IManifest SModManifest;
         
         internal static bool IsEnabled = true; // Whether the mod is enabled for the current farmhand.
-
-        private static MultiplayerHorseReskinModConfig config;
 
         private static Dictionary<Guid, int> horseSkinMap = new Dictionary<Guid, int>();
         private static Dictionary<Guid, Horse> horseIdMap = new Dictionary<Guid, Horse>();
@@ -72,16 +69,7 @@ namespace MultiplayerHorseReskin
         *********/
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
-            // Read config
-            config = SHelper.ReadConfig<MultiplayerHorseReskinModConfig>();
 
-            // Add Generic Mod Config Menu integration
-            var api = SHelper.ModRegistry.GetApi<GenericModConfigMenuAPI>("spacechase0.GenericModConfigMenu");
-            if (api != null)
-            {
-                api.RegisterModConfig(ModManifest, () => config = new MultiplayerHorseReskinModConfig(), () => SHelper.WriteConfig(config));
-                api.RegisterSimpleOption(ModManifest, "Total horse skin assets", "The number of .png files in the /assets folder for this mod", () => config.AmountOfHorseSkins, (int val) => config.AmountOfHorseSkins = val);
-            }
         }
 
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
@@ -312,16 +300,13 @@ namespace MultiplayerHorseReskin
         {
             if (!Context.IsMainPlayer)
                 return;
-
+            // TODO: use modData instead of Manners
             if (horse.Manners > 0)
             {
-                if (horse.Manners <= config.AmountOfHorseSkins)
+                if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{horse.Manners}.png")))
                 {
-                    if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{horse.Manners}.png")))
-                    {
-                        // horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
-                        UpdateHorseSkinMap(horse.HorseId, horse.Manners);
-                    }
+                    // horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
+                    UpdateHorseSkinMap(horse.HorseId, horse.Manners);
                 }
             }
         }
@@ -335,19 +320,16 @@ namespace MultiplayerHorseReskin
             {
                 int skinId = horseSkinMap[horse.HorseId];
 
-                if (skinId <= config.AmountOfHorseSkins)
+                if (!Directory.Exists(assetsPath))
                 {
-                    if (!Directory.Exists(assetsPath))
-                    {
-                        SMonitor.Log($"Horse asssets path could not be found. {assetsPath}", LogLevel.Warn);
-                        return;
-                    }
+                    SMonitor.Log($"Horse asssets path could not be found. {assetsPath}", LogLevel.Warn);
+                    return;
+                }
 
-                    // TODO: add logic to allow better file names (see cats and dogs mod)
-                    if(File.Exists(PathUtilities.NormalizePath($"{assetsPath}horse_{skinId}.png")))
-                    {
-                        horse.Sprite.spriteTexture = SHelper.ModContent.Load<Texture2D>($"{assetsPath}horse_{skinId}.png");
-                    }
+                // TODO: add logic to allow better file names (see cats and dogs mod)
+                if(File.Exists(PathUtilities.NormalizePath($"{assetsPath}horse_{skinId}.png")))
+                {
+                    horse.Sprite.spriteTexture = SHelper.ModContent.Load<Texture2D>($"{assetsPath}horse_{skinId}.png");
                 }
             }
         }
@@ -390,7 +372,7 @@ namespace MultiplayerHorseReskin
             for (var i = 0; i < files.Length; i++)
             {
                 var relFileName = AbsoluteToRelativePath(files[i], modPath);
-                skinTextureMap[i] = SHelper.ModContent.Load<Texture2D>(relFileName);
+                skinTextureMap[i] = SHelper.ModContent.Load<Texture2D>(relFileName);// TODO: refactor to use filename for key?
             }
         }
 
@@ -399,15 +381,10 @@ namespace MultiplayerHorseReskin
             if (!Context.IsMainPlayer)
                 return;
 
-            if (skinId > config.AmountOfHorseSkins)
-            {
-                SMonitor.Log($"Tried to save skin {skinId}, but config file states there are only {config.AmountOfHorseSkins} skins in /assets", LogLevel.Warn);
-                return;
-            }
-
             var horse = GetHorseById(horseId);
             if (horse != null)
             {
+                // TODO: use modData instead of Manners
                 horse.Manners = skinId;
                 SMonitor.Log($"Saving skin {skinId} to horse {horse.displayName}", LogLevel.Info);
                 UpdateHorseSkinMap(horseId, skinId);
