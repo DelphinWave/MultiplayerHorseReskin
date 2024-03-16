@@ -185,7 +185,7 @@ namespace MultiplayerHorseReskin
             bool IsPlayerInStable(Building stable)
             {
                 var stableRect = new Rectangle(stable.tileX, stable.tileY, stable.tilesWide, stable.tilesHigh);
-                if (stableRect.Contains(new Point(Game1.player.getTileX(), Game1.player.getTileY()))) // player standing in stable
+                if (stableRect.Contains(Game1.player.Tile)) // player standing in stable
                     return true;
                 return false;
             }
@@ -327,18 +327,34 @@ namespace MultiplayerHorseReskin
         }
         public static void ReLoadHorseSprites(Horse horse)
         {
+            var separator = Path.DirectorySeparatorChar;
+            string modPath = PathUtilities.NormalizePath(SHelper.DirectoryPath);
+            string assetsPath = PathUtilities.NormalizePath($"{modPath}{separator}assets{separator}");
+
             if (horseSkinMap.ContainsKey(horse.HorseId) && horseSkinMap[horse.HorseId] > 0)
             {
                 int skinId = horseSkinMap[horse.HorseId];
 
                 if (skinId <= config.AmountOfHorseSkins)
                 {
-                    if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{skinId}.png")))
+                    if (!Directory.Exists(assetsPath))
                     {
-                        horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{skinId}.png");
+                        SMonitor.Log($"Horse asssets path could not be found. {assetsPath}", LogLevel.Warn);
+                        return;
+                    }
+
+                    // TODO: add logic to allow better file names (see cats and dogs mod)
+                    if(File.Exists(PathUtilities.NormalizePath($"{assetsPath}horse_{skinId}.png")))
+                    {
+                        horse.Sprite.spriteTexture = SHelper.ModContent.Load<Texture2D>($"{assetsPath}horse_{skinId}.png");
                     }
                 }
             }
+        }
+
+        private static string AbsoluteToRelativePath(string absolutePath, string modPath)
+        {
+            return absolutePath.Replace(modPath, "");
         }
 
         public static void SendMultiplayerReloadSkinMessage(Guid horseId, int skinId)
@@ -360,8 +376,22 @@ namespace MultiplayerHorseReskin
 
         private static void LoadAllSprites()
         {
-            for (var i = 1; i <= config.AmountOfHorseSkins; i++)
-                skinTextureMap[i] = SHelper.Content.Load<Texture2D>($"assets/horse_{i}.png");
+            var separator = Path.DirectorySeparatorChar;
+            string modPath = PathUtilities.NormalizePath(SHelper.DirectoryPath);
+            string assetsPath = PathUtilities.NormalizePath($"{modPath}{separator}assets{separator}");
+
+            if (!Directory.Exists(assetsPath))
+            {
+                SMonitor.Log($"asssets path could not be found. {assetsPath}", LogLevel.Warn);
+                return;
+            }
+
+            var files = Directory.GetFiles(assetsPath, "*.png");
+            for (var i = 0; i < files.Length; i++)
+            {
+                var relFileName = AbsoluteToRelativePath(files[i], modPath);
+                skinTextureMap[i] = SHelper.ModContent.Load<Texture2D>(relFileName);
+            }
         }
 
         public static void SaveHorseReskin(Guid horseId, int skinId)
