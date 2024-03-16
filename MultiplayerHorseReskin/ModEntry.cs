@@ -172,7 +172,7 @@ namespace MultiplayerHorseReskin
 
             bool IsPlayerInStable(Building stable)
             {
-                var stableRect = new Rectangle(stable.tileX, stable.tileY, stable.tilesWide, stable.tilesHigh);
+                var stableRect = new Rectangle(stable.tileX.Value, stable.tileY.Value, stable.tilesWide.Value, stable.tilesHigh.Value);
                 if (stableRect.Contains(Game1.player.Tile)) // player standing in stable
                     return true;
                 return false;
