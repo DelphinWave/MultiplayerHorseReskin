@@ -15,7 +15,7 @@ namespace MultiplayerHorseReskin.Framework
     class HorseReskinMenu : IClickableMenu
     {
         // Handling Skin
-        public int currentSkinId = 1;
+        public int currentSkinId = 0;
         public Dictionary<int, Texture2D> skinTextureMap;
         public Guid horseId;
 
@@ -63,8 +63,8 @@ namespace MultiplayerHorseReskin.Framework
             if (b == Buttons.LeftTrigger)
             {
                 this.currentSkinId--;
-                if (this.currentSkinId < 1)
-                    this.currentSkinId = this.skinTextureMap.Count;
+                if (this.currentSkinId < 0)
+                    this.currentSkinId = this.skinTextureMap.Count -1;
 
                 Game1.playSound("shwip");
                 this.backButton.scale = this.backButton.baseScale;
@@ -73,8 +73,8 @@ namespace MultiplayerHorseReskin.Framework
             if (b == Buttons.RightTrigger)
             {
                 this.currentSkinId++;
-                if (this.currentSkinId > skinTextureMap.Count)
-                    this.currentSkinId = 1;
+                if (this.currentSkinId >= skinTextureMap.Count)
+                    this.currentSkinId = 0;
 
                 this.forwardButton.scale = this.forwardButton.baseScale;
                 Game1.playSound("shwip");
@@ -93,8 +93,8 @@ namespace MultiplayerHorseReskin.Framework
             if (this.backButton.containsPoint(x, y))
             {
                 this.currentSkinId--;
-                if (this.currentSkinId < 1)
-                    this.currentSkinId = this.skinTextureMap.Count;
+                if (this.currentSkinId < 0)
+                    this.currentSkinId = this.skinTextureMap.Count -1;
 
                 Game1.playSound("shwip");
                 this.backButton.scale = this.backButton.baseScale;
@@ -103,8 +103,8 @@ namespace MultiplayerHorseReskin.Framework
             if (this.forwardButton.containsPoint(x, y))
             {
                 this.currentSkinId++;
-                if (this.currentSkinId > skinTextureMap.Count)
-                    this.currentSkinId = 1;
+                if (this.currentSkinId >= skinTextureMap.Count)
+                    this.currentSkinId = 0;
 
                 this.forwardButton.scale = this.forwardButton.baseScale;
                 Game1.playSound("shwip");
