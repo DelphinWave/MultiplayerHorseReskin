@@ -26,15 +26,16 @@ namespace MultiplayerHorseReskin
         
         internal static bool IsEnabled = true; // Whether the mod is enabled for the current farmhand.
 
-        private static Dictionary<Guid, int> horseSkinMap = new Dictionary<Guid, int>();
+        private static Dictionary<Guid, string> horseSkinMap = new Dictionary<Guid, string>();
         private static Dictionary<Guid, Horse> horseIdMap = new Dictionary<Guid, Horse>();
-        private static Dictionary<int, Texture2D> skinTextureMap = new Dictionary<int, Texture2D>();
+        private static Dictionary<string, Texture2D> skinTextureMap = new Dictionary<string, Texture2D>();
 
         // constants
         internal static readonly string ReskinHorseMessageId = "HorseReskin"; // A request from a farmhand to reskin a horse
         internal static readonly string ReloadHorseSpritesMessageId = "HorseSpriteReload"; // Inform farmhands to update horse sprites
         private readonly uint TextureUpdateRateWithSinglePlayer = 30;
         private readonly uint TextureUpdateRateWithMultiplePlayers = 3;
+        public static string MOD_DATA_SKIN_ID;
 
         // The minimum version the host must have for the mod to be enabled on a farmhand.
         private readonly string MinHostVersion = "1.1.2";
@@ -47,6 +48,8 @@ namespace MultiplayerHorseReskin
             SMonitor = Monitor;
             SHelper = helper;
             SModManifest = ModManifest;
+
+            MOD_DATA_SKIN_ID = $"{SModManifest.UniqueID}/skinId";
 
             // Events
             IModEvents events = helper.Events;
@@ -300,15 +303,15 @@ namespace MultiplayerHorseReskin
         {
             if (!Context.IsMainPlayer)
                 return;
-            // TODO: use modData instead of Manners
-            if (horse.Manners > 0)
+
+            if (!horse.modData.ContainsKey(MOD_DATA_SKIN_ID))
+                return;
+
+            if (File.Exists(horse.modData[MOD_DATA_SKIN_ID]))
             {
-                if (File.Exists(Path.Combine(SHelper.DirectoryPath, $"assets/horse_{horse.Manners}.png")))
-                {
-                    // horse.Sprite.spriteTexture = SHelper.Content.Load<Texture2D>($"assets/horse_{horse.Manners}.png");
-                    UpdateHorseSkinMap(horse.HorseId, horse.Manners);
-                }
+                UpdateHorseSkinMap(horse.HorseId, horse.modData[MOD_DATA_SKIN_ID]);
             }
+
         }
         public static void ReLoadHorseSprites(Horse horse)
         {
@@ -316,9 +319,9 @@ namespace MultiplayerHorseReskin
             string modPath = PathUtilities.NormalizePath(SHelper.DirectoryPath);
             string assetsPath = PathUtilities.NormalizePath($"{modPath}{separator}assets{separator}");
 
-            if (horseSkinMap.ContainsKey(horse.HorseId) && horseSkinMap[horse.HorseId] > 0)
+            if (horseSkinMap.ContainsKey(horse.HorseId) && horseSkinMap[horse.HorseId] != null)
             {
-                int skinId = horseSkinMap[horse.HorseId];
+                string skinId = horseSkinMap[horse.HorseId];
 
                 if (!Directory.Exists(assetsPath))
                 {
@@ -326,10 +329,9 @@ namespace MultiplayerHorseReskin
                     return;
                 }
 
-                // TODO: add logic to allow better file names (see cats and dogs mod)
-                if(File.Exists(PathUtilities.NormalizePath($"{assetsPath}horse_{skinId}.png")))
+                if(File.Exists(horse.modData[MOD_DATA_SKIN_ID]))
                 {
-                    horse.Sprite.spriteTexture = SHelper.ModContent.Load<Texture2D>($"{assetsPath}horse_{skinId}.png");
+                    horse.Sprite.spriteTexture = SHelper.ModContent.Load<Texture2D>($"{AbsoluteToRelativePath(horse.modData[MOD_DATA_SKIN_ID], modPath)}");
                 }
             }
         }
@@ -339,7 +341,7 @@ namespace MultiplayerHorseReskin
             return absolutePath.Replace(modPath, "");
         }
 
-        public static void SendMultiplayerReloadSkinMessage(Guid horseId, int skinId)
+        public static void SendMultiplayerReloadSkinMessage(Guid horseId, string skinId)
         {
             if (Context.IsMainPlayer)
             {
@@ -351,7 +353,7 @@ namespace MultiplayerHorseReskin
             }
         }
         
-        public static void UpdateHorseSkinMap(Guid horseId, int skinId)
+        public static void UpdateHorseSkinMap(Guid horseId, string skinId)
         {
             horseSkinMap[horseId] = skinId;
         }
@@ -372,11 +374,14 @@ namespace MultiplayerHorseReskin
             for (var i = 0; i < files.Length; i++)
             {
                 var relFileName = AbsoluteToRelativePath(files[i], modPath);
-                skinTextureMap[i] = SHelper.ModContent.Load<Texture2D>(relFileName);// TODO: refactor to use filename for key?
+                skinTextureMap[files[i]] = SHelper.ModContent.Load<Texture2D>(relFileName);
+                //SMonitor.Log($"{i}- files[i]: {files[i]}", LogLevel.Info);
+                //SMonitor.Log($"{i}- relFileName: {relFileName}", LogLevel.Info);
+
             }
         }
 
-        public static void SaveHorseReskin(Guid horseId, int skinId)
+        public static void SaveHorseReskin(Guid horseId, string skinId)
         {
             if (!Context.IsMainPlayer)
                 return;
@@ -384,8 +389,7 @@ namespace MultiplayerHorseReskin
             var horse = GetHorseById(horseId);
             if (horse != null)
             {
-                // TODO: use modData instead of Manners
-                horse.Manners = skinId;
+                horse.modData[MOD_DATA_SKIN_ID] = skinId;
                 SMonitor.Log($"Saving skin {skinId} to horse {horse.displayName}", LogLevel.Info);
                 UpdateHorseSkinMap(horseId, skinId);
                 ReLoadHorseSprites(horse);

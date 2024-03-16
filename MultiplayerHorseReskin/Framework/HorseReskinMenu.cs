@@ -7,6 +7,7 @@ using StardewValley.Menus;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -16,7 +17,7 @@ namespace MultiplayerHorseReskin.Framework
     {
         // Handling Skin
         public int currentSkinId = 0;
-        public Dictionary<int, Texture2D> skinTextureMap;
+        public Dictionary<string, Texture2D> skinTextureMap;
         public Guid horseId;
 
         // Menu Textures
@@ -42,10 +43,10 @@ namespace MultiplayerHorseReskin.Framework
         private readonly int okButtonId = 46;
 
 
-        public HorseReskinMenu(Guid horseId, Dictionary<int, Texture2D> skinTextureMap)
+        public HorseReskinMenu(Guid horseId, Dictionary<string, Texture2D> skinTextureMap)
         {
             this.horseId = horseId;
-            this.skinTextureMap = new Dictionary<int, Texture2D>(skinTextureMap);
+            this.skinTextureMap = new Dictionary<string, Texture2D>(skinTextureMap);
             if (this.skinTextureMap.Count < 1)
             {
                 ModEntry.SMonitor.Log("The Horse reskin menu is not available because there are no textures in the texture map", LogLevel.Error);
@@ -55,7 +56,7 @@ namespace MultiplayerHorseReskin.Framework
             resetBounds();
         }
 
-        public Texture2D CurrentHorseTexture => this.skinTextureMap[this.currentSkinId];
+        public Texture2D CurrentHorseTexture => this.skinTextureMap.ElementAt(this.currentSkinId).Value;
 
         public override void receiveGamePadButton(Buttons b)
         {
@@ -147,12 +148,12 @@ namespace MultiplayerHorseReskin.Framework
         {
             if (Context.IsMainPlayer)
             {
-                ModEntry.SaveHorseReskin(horseId, currentSkinId);
+                ModEntry.SaveHorseReskin(horseId, skinTextureMap.ElementAt(currentSkinId).Key);
             }
             else
             {
                 ModEntry.SHelper.Multiplayer.SendMessage(
-                    message: new HorseReskinMessage(horseId, currentSkinId),
+                    message: new HorseReskinMessage(horseId, skinTextureMap.ElementAt(currentSkinId).Key),
                     messageType: ModEntry.ReskinHorseMessageId,
                     modIDs: new[] { ModEntry.SModManifest.UniqueID }
                 );

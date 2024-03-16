@@ -45,12 +45,12 @@ namespace MultiplayerHorseReskin.Framework
                     {
                         if (Context.IsMainPlayer)
                         {
-                            ModEntry.SaveHorseReskin((Guid)horseIdFromName, int.Parse(skinId));
+                            ModEntry.SaveHorseReskin((Guid)horseIdFromName, skinId);
                         }
                         else
                         {
                             ModEntry.SHelper.Multiplayer.SendMessage(
-                                message: new HorseReskinMessage((Guid)horseIdFromName, int.Parse(skinId)),
+                                message: new HorseReskinMessage((Guid)horseIdFromName, skinId),
                                 messageType: ModEntry.ReskinHorseMessageId,
                                 modIDs: new[] { ModEntry.SModManifest.UniqueID }
                             );
@@ -70,12 +70,12 @@ namespace MultiplayerHorseReskin.Framework
                     
                     if (Context.IsMainPlayer)
                     {
-                        ModEntry.SaveHorseReskin(Guid.Parse(horseId), int.Parse(skinId));
+                        ModEntry.SaveHorseReskin(Guid.Parse(horseId), skinId);
                     }
                     else
                     {
                         ModEntry.SHelper.Multiplayer.SendMessage(
-                            message: new HorseReskinMessage(Guid.Parse(horseId), int.Parse(skinId)),
+                            message: new HorseReskinMessage(Guid.Parse(horseId), skinId),
                             messageType: ModEntry.ReskinHorseMessageId,
                             modIDs: new[] { ModEntry.SModManifest.UniqueID }
                         );
