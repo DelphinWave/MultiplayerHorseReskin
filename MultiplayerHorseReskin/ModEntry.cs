@@ -73,6 +73,7 @@ namespace MultiplayerHorseReskin
         ** Event Listeners
         *********/
 
+
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
 
@@ -311,13 +312,19 @@ namespace MultiplayerHorseReskin
 
         public void GenerateHorseSkinMap(Horse horse)
         {
+            SMonitor.Log($"GenerateHorseSkinMap()", LogLevel.Warn);
             if (!Context.IsMainPlayer)
                 return;
 
             if (!horse.modData.ContainsKey(MOD_DATA_SKIN_ID))
+            {
+                SMonitor.Log($"!horse.modData.ContainsKey(MOD_DATA_SKIN_ID)", LogLevel.Warn);
                 return;
-
-            if (File.Exists(horse.modData[MOD_DATA_SKIN_ID]))
+            }
+            string modAssetsPath = Path.Combine(SHelper.DirectoryPath, "assets");
+            string skinFileName = horse.modData[MOD_DATA_SKIN_ID];
+            string filepath = Path.Combine(modAssetsPath, skinFileName);
+            if (File.Exists(filepath))
             {
                 UpdateHorseSkinMap(horse.HorseId, horse.modData[MOD_DATA_SKIN_ID]);
             }
