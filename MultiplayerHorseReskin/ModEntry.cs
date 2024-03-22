@@ -38,7 +38,7 @@ namespace MultiplayerHorseReskin
         public static string MOD_DATA_SKIN_ID;
 
         // The minimum version the host must have for the mod to be enabled on a farmhand.
-        private readonly string MinHostVersion = "1.1.2";
+        private readonly string MinHostVersion = "2.0.0";
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -53,13 +53,15 @@ namespace MultiplayerHorseReskin
 
             // Events
             IModEvents events = helper.Events;
-            events.GameLoop.GameLaunched += this.OnGameLaunched;
             events.GameLoop.SaveLoaded += this.OnSaveLoaded;
             events.GameLoop.DayStarted += this.OnDayStarted;
             events.GameLoop.UpdateTicked += this.OnUpdateTicked;
             events.Input.ButtonPressed += this.OnButtonPressed;
             events.Multiplayer.ModMessageReceived += this.OnModMessageReceived;
             events.Multiplayer.PeerConnected += this.OnPeerConnected;
+            events.Player.Warped += this.OnPlayerWarped;
+
+            // ~~TODO: add warp event => since many report skin resetting when they exit building~~
 
             // SMAPI Commands
             SHelper.ConsoleCommands.Add("list_horses", "Lists the names of all horses on your farm.", CommandHandler.OnCommandReceived);
@@ -70,10 +72,6 @@ namespace MultiplayerHorseReskin
         /*********
         ** Event Listeners
         *********/
-        private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
-        {
-
-        }
 
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
         {
@@ -155,10 +153,22 @@ namespace MultiplayerHorseReskin
                 if (e.IsMultipleOf(updateRate))
                 {
                     foreach (Horse horse in GetHorsesIn(Game1.currentLocation))
-                        if(horseSkinMap.ContainsKey(horse.HorseId) && skinTextureMap.ContainsKey(horseSkinMap[horse.HorseId]))
-                            horse.Sprite.spriteTexture =  skinTextureMap[horseSkinMap[horse.HorseId]];
+                        if (horseSkinMap.ContainsKey(horse.HorseId) && skinTextureMap.ContainsKey(horseSkinMap[horse.HorseId]))
+                            horse.Sprite.spriteTexture = skinTextureMap[horseSkinMap[horse.HorseId]];
                 }
             }
+        }
+
+        private void OnPlayerWarped(object sender, WarpedEventArgs e) // due to some people reporting horse losing skin after warp
+        {
+            if (!IsEnabled)
+                return;
+
+            horseIdMap.Clear();
+            horseIdMap = GetHorsesDict();
+
+            foreach (var d in horseIdMap)
+                ReLoadHorseSprites(d.Value);
         }
 
         private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
@@ -315,29 +325,32 @@ namespace MultiplayerHorseReskin
         }
         public static void ReLoadHorseSprites(Horse horse)
         {
-            var separator = Path.DirectorySeparatorChar;
-            string modPath = PathUtilities.NormalizePath(SHelper.DirectoryPath);
-            string assetsPath = PathUtilities.NormalizePath($"{modPath}{separator}assets{separator}");
+            string modAssetsPath = Path.Combine(SHelper.DirectoryPath, "assets");
 
             if (horseSkinMap.ContainsKey(horse.HorseId) && horseSkinMap[horse.HorseId] != null)
             {
-                string skinId = horseSkinMap[horse.HorseId];
-
-                if (!Directory.Exists(assetsPath))
+                string skinFileName = horse.modData[MOD_DATA_SKIN_ID];
+                if (!Directory.Exists(modAssetsPath))
                 {
-                    SMonitor.Log($"Horse asssets path could not be found. {assetsPath}", LogLevel.Warn);
+                    SMonitor.Log($"Horse asssets path could not be found. {modAssetsPath}", LogLevel.Warn);
                     return;
                 }
 
-                if(File.Exists(horse.modData[MOD_DATA_SKIN_ID]))
+                string filepath = Path.Combine(modAssetsPath, skinFileName);
+                if (File.Exists(filepath))
                 {
-                    horse.Sprite.spriteTexture = SHelper.ModContent.Load<Texture2D>($"{AbsoluteToRelativePath(horse.modData[MOD_DATA_SKIN_ID], modPath)}");
+                    horse.Sprite.spriteTexture = SHelper.ModContent.Load<Texture2D>($"{Path.Combine("assets", skinFileName)}");
                 }
             }
         }
 
-        private static string AbsoluteToRelativePath(string absolutePath, string modPath)
+        private static string FileName(string filePath)
         {
+            return PathUtilities.GetSegments(filePath).Last();
+        }
+        private static string AbsoluteToRelativePath(string absolutePath)
+        {
+            var modPath = PathUtilities.NormalizePath(SHelper.DirectoryPath);
             return absolutePath.Replace(modPath, "");
         }
 
@@ -360,21 +373,19 @@ namespace MultiplayerHorseReskin
 
         private static void LoadAllSprites()
         {
-            var separator = Path.DirectorySeparatorChar;
-            string modPath = PathUtilities.NormalizePath(SHelper.DirectoryPath);
-            string assetsPath = PathUtilities.NormalizePath($"{modPath}{separator}assets{separator}");
+            string modAssetsPath = Path.Combine(SHelper.DirectoryPath, "assets");
 
-            if (!Directory.Exists(assetsPath))
+            if (!Directory.Exists(modAssetsPath))
             {
-                SMonitor.Log($"asssets path could not be found. {assetsPath}", LogLevel.Warn);
+                SMonitor.Log($"asssets path could not be found. {modAssetsPath}", LogLevel.Warn);
                 return;
             }
 
-            var files = Directory.GetFiles(assetsPath, "*.png");
+            var files = Directory.GetFiles(modAssetsPath, "*.png");
             for (var i = 0; i < files.Length; i++)
             {
-                var relFileName = AbsoluteToRelativePath(files[i], modPath);
-                skinTextureMap[files[i]] = SHelper.ModContent.Load<Texture2D>(relFileName);
+                var relFileName = AbsoluteToRelativePath(files[i]);
+                skinTextureMap[FileName(files[i])] = SHelper.ModContent.Load<Texture2D>(relFileName);
                 //SMonitor.Log($"{i}- files[i]: {files[i]}", LogLevel.Info);
                 //SMonitor.Log($"{i}- relFileName: {relFileName}", LogLevel.Info);
 
@@ -390,7 +401,7 @@ namespace MultiplayerHorseReskin
             if (horse != null)
             {
                 horse.modData[MOD_DATA_SKIN_ID] = skinId;
-                SMonitor.Log($"Saving skin {skinId} to horse {horse.displayName}", LogLevel.Info);
+                SMonitor.Log($"Saving skin {AbsoluteToRelativePath(skinId)} to horse {horse.displayName}", LogLevel.Info);
                 UpdateHorseSkinMap(horseId, skinId);
                 ReLoadHorseSprites(horse);
                 SendMultiplayerReloadSkinMessage(horseId, skinId);

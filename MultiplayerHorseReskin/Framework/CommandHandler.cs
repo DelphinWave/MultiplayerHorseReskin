@@ -35,7 +35,7 @@ namespace MultiplayerHorseReskin.Framework
                 case "reskin_horse":
                     if (args.Length < 2 || args.Length > 2)
                     {
-                        ModEntry.SMonitor.Log($"reskin_horse requires 2 arguments, the name of the horse you wish to reskin and the id of the skin you want for that horse", LogLevel.Error);
+                        ModEntry.SMonitor.Log($"reskin_horse requires 2 arguments, the name of the horse you wish to reskin and the filename of the skin you want for that horse", LogLevel.Error);
                         return;
                     }
                     var horseName = args[0];
@@ -60,7 +60,7 @@ namespace MultiplayerHorseReskin.Framework
                 case "reskin_horse_id":
                     if (args.Length < 2 || args.Length > 2)
                     {
-                        ModEntry.SMonitor.Log($"reskin_horse requires 2 arguments, the id of the horse you wish to reskin and the id of the skin you want for that horse", LogLevel.Error);
+                        ModEntry.SMonitor.Log($"reskin_horse requires 2 arguments, the id of the horse you wish to reskin and the filename of the skin you want for that horse", LogLevel.Error);
                         return;
                     }
                     var horseId = args[0];

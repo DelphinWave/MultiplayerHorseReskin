@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
 using StardewValley;
+using StardewValley.BellsAndWhistles;
 using StardewValley.Menus;
 using System;
 using System.Collections.Generic;
@@ -137,6 +138,8 @@ namespace MultiplayerHorseReskin.Framework
             
             IClickableMenu.drawTextureBox(b, base.xPositionOnScreen, base.yPositionOnScreen, base.width, base.height, Color.White);
             base.draw(b);
+            // TODO: Display Horse name
+            //SpriteText.drawStringWithScrollCenteredAt(b, "Hello World", Game1.uiViewport.Width / 2 + +IClickableMenu.spaceToClearSideBorder, Game1.uiViewport.Height / 2 + maxHeightOfMenu / 2 + IClickableMenu.spaceToClearTopBorder, "Hello World");
             this.horsePreview.draw(b);
             this.backButton.draw(b);
             this.forwardButton.draw(b);
