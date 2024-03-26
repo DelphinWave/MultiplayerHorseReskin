@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
+using StardewModdingAPI.Utilities;
 using StardewValley;
 using StardewValley.BellsAndWhistles;
 using StardewValley.Menus;
@@ -91,12 +92,18 @@ namespace MultiplayerHorseReskin.Framework
         }
         public override void receiveLeftClick(int x, int y, bool playSound = true)
         {
+            int shiftClickIncrement = 31;
+
             base.receiveLeftClick(x, y, playSound);
             if (this.backButton.containsPoint(x, y))
             {
-                this.currentSkinId--;
+                if (KeybindList.Parse("LeftShift, RightShift").IsDown())
+                    this.currentSkinId -= shiftClickIncrement;
+                else
+                    this.currentSkinId--;
+
                 if (this.currentSkinId < 0)
-                    this.currentSkinId = this.skinTextureMap.Count -1;
+                    this.currentSkinId += this.skinTextureMap.Count;
 
                 Game1.playSound("shwip");
                 this.backButton.scale = this.backButton.baseScale;
@@ -104,9 +111,13 @@ namespace MultiplayerHorseReskin.Framework
             }
             if (this.forwardButton.containsPoint(x, y))
             {
-                this.currentSkinId++;
-                if (this.currentSkinId >= skinTextureMap.Count)
-                    this.currentSkinId = 0;
+                if (KeybindList.Parse("LeftShift, RightShift").IsDown())
+                    this.currentSkinId += shiftClickIncrement;
+                else
+                    this.currentSkinId++;
+
+                if (this.currentSkinId >= this.skinTextureMap.Count)
+                    this.currentSkinId -= this.skinTextureMap.Count;
 
                 this.forwardButton.scale = this.forwardButton.baseScale;
                 Game1.playSound("shwip");
